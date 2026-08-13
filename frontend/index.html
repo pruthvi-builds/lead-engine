@@ -3,7 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lead Engine</title>
+<title>Lead Engine - find verified contacts from public data</title>
+<meta name="description" content="Give it a company name or domain, get back named contacts with verified/scored email addresses. Built entirely on public data - no LinkedIn scraping, no purchased lists.">
+<meta property="og:title" content="Lead Engine - find verified contacts from public data">
+<meta property="og:description" content="Give it a company name or domain, get back named contacts with verified/scored email addresses. No LinkedIn scraping, no purchased lists - every lead includes its source URL.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://lead-engine-w523.onrender.com/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Lead Engine - find verified contacts from public data">
+<meta name="twitter:description" content="Give it a company name or domain, get back named contacts with verified/scored email addresses.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0d12'/%3E%3Ctext x='32' y='44' font-size='34' font-family='-apple-system,Arial,sans-serif' font-weight='700' fill='%235b8def' text-anchor='middle'%3EL%3C/text%3E%3C/svg%3E">
 <style>
   :root {
     --bg: #0b0d12; --panel: #131722; --border: #232838; --text: #e8eaf0;
@@ -41,6 +50,19 @@
   .err { color: var(--danger); font-size: 13px; margin-top: 8px; }
   a { color: var(--accent); }
   .footer-note { color: var(--muted); font-size: 12px; margin-top: 24px; }
+
+  .hero { padding: 8px 0 36px; }
+  .hero h2 { font-size: clamp(26px, 5vw, 38px); line-height: 1.15; margin: 0 0 14px; letter-spacing: -0.02em; }
+  .hero h2 span { color: var(--accent); }
+  .hero p.lead { color: var(--muted); font-size: 16px; line-height: 1.55; max-width: 640px; margin: 0 0 22px; }
+  .badges { display:flex; gap: 10px; flex-wrap: wrap; margin-bottom: 26px; }
+  .badge { font-size: 12.5px; padding: 6px 12px; border-radius: 999px; background: var(--panel); border:1px solid var(--border); color: var(--text); }
+  .badge b { color: var(--accent2); }
+  .feature-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 8px; }
+  .feature { background: var(--panel); border:1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+  .feature .ico { font-size: 12px; font-weight:700; letter-spacing:0.08em; color: var(--accent); margin-bottom: 8px; text-transform: uppercase; }
+  .feature h3 { font-size: 14px; margin: 0 0 6px; }
+  .feature p { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -50,31 +72,62 @@
     <div id="acct" class="row"></div>
   </header>
 
-  <!-- AUTH -->
+  <div id="landing">
+    <div class="hero">
+      <h2>Find named contacts and <span>verified emails</span> - from public data, in seconds.</h2>
+      <p class="lead">Give it a company name or domain. Get back real people, their titles, and scored email
+        addresses - sourced entirely from public company data. No LinkedIn scraping, no purchased lists, no
+        ToS or data-privacy landmine sitting under it.</p>
+      <div class="badges">
+        <span class="badge"><b>5</b> free lookups / day</span>
+        <span class="badge">Every lead includes its source URL</span>
+        <span class="badge">CSV export</span>
+        <span class="badge">Bulk lookups on paid tier</span>
+      </div>
+    </div>
+
+    <div class="feature-grid">
+      <div class="feature">
+        <div class="ico">Public data only</div>
+        <h3>No scraping, no broker lists</h3>
+        <p>Every contact and email is pulled from a company's own public web presence - nothing scraped from LinkedIn, nothing bought from a data broker.</p>
+      </div>
+      <div class="feature">
+        <div class="ico">Confidence scored</div>
+        <h3>Know how much to trust it</h3>
+        <p>Each result comes with a confidence score and the exact source page, so you can judge quality before you send anything.</p>
+      </div>
+      <div class="feature">
+        <div class="ico">Free to start</div>
+        <h3>5 lookups a day, no cost</h3>
+        <p>Upgrade any time for unlimited lookups and bulk search across whole lists of companies.</p>
+      </div>
+    </div>
+  </div>
+
   <div id="authCard" class="card">
     <div class="tabs">
-      <div class="tab active" data-tab="login">Log in</div>
-      <div class="tab" data-tab="signup">Sign up</div>
+      <div class="tab" data-tab="login">Log in</div>
+      <div class="tab active" data-tab="signup">Sign up</div>
     </div>
-    <div id="loginForm">
+    <div id="loginForm" class="hidden">
       <label>Email</label>
       <input id="loginEmail" type="email" placeholder="you@company.com">
       <label>Password</label>
-      <input id="loginPassword" type="password" placeholder="••••••••">
+      <input id="loginPassword" type="password" placeholder="********">
       <button onclick="doLogin()">Log in</button>
       <div id="loginErr" class="err"></div>
     </div>
-    <div id="signupForm" class="hidden">
+    <div id="signupForm">
       <label>Email</label>
       <input id="signupEmail" type="email" placeholder="you@company.com">
       <label>Password (min 8 characters)</label>
-      <input id="signupPassword" type="password" placeholder="••••••••">
-      <button onclick="doSignup()">Create account</button>
+      <input id="signupPassword" type="password" placeholder="********">
+      <button onclick="doSignup()">Create free account</button>
       <div id="signupErr" class="err"></div>
     </div>
   </div>
 
-  <!-- APP -->
   <div id="appArea" class="hidden">
     <div class="card">
       <div class="tabs">
@@ -121,7 +174,7 @@
   </div>
 
   <div class="footer-note">
-    Built on public company data only — no LinkedIn scraping, no purchased lists. Every lead includes its source URL.
+    Built on public company data only - no LinkedIn scraping, no purchased lists. Every lead includes its source URL.
   </div>
 </div>
 
@@ -182,6 +235,7 @@ async function doLogin() {
 
 async function onAuthed(key, email) {
   apiKey = key;
+  document.getElementById('landing').classList.add('hidden');
   document.getElementById('authCard').classList.add('hidden');
   document.getElementById('appArea').classList.remove('hidden');
   await refreshAccount();
@@ -190,10 +244,10 @@ async function onAuthed(key, email) {
 async function refreshAccount() {
   const me = await api('/me');
   const acct = document.getElementById('acct');
-  acct.innerHTML = `<span class="pill ${me.is_paid ? 'paid' : ''}">${me.email} · ${me.is_paid ? 'Paid' : 'Free'}</span>`;
+  acct.innerHTML = '<span class="pill ' + (me.is_paid ? 'paid' : '') + '">' + me.email + ' | ' + (me.is_paid ? 'Paid' : 'Free') + '</span>';
   document.getElementById('quotaText').textContent =
     me.is_paid ? 'Unlimited lookups + bulk enabled.' :
-    `${me.usage_today} / ${me.free_daily_quota} lookups used today.`;
+    (me.usage_today + ' / ' + me.free_daily_quota + ' lookups used today.');
   document.getElementById('upgradeCard').classList.toggle('hidden', me.is_paid);
 }
 
@@ -206,16 +260,16 @@ function confClass(c) {
 function renderRows(rows) {
   lastRows = rows;
   const tbody = document.querySelector('#resultsTable tbody');
-  tbody.innerHTML = rows.map(r => `
-    <tr>
-      <td>${r.company || ''}</td>
-      <td>${r.name || '<span class="muted">—</span>'}</td>
-      <td>${r.title || ''}</td>
-      <td>${r.email || '<span class="muted">none found</span>'}</td>
-      <td class="conf ${confClass(r.confidence)}">${(r.confidence ?? 0).toFixed(2)}</td>
-      <td><a href="${(r.sourceUrls||[])[0]||'#'}" target="_blank" class="muted">source</a></td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = rows.map(r => (
+    '<tr>' +
+      '<td>' + (r.company || '') + '</td>' +
+      '<td>' + (r.name || '<span class="muted">none</span>') + '</td>' +
+      '<td>' + (r.title || '') + '</td>' +
+      '<td>' + (r.email || '<span class="muted">none found</span>') + '</td>' +
+      '<td class="conf ' + confClass(r.confidence) + '">' + (r.confidence ?? 0).toFixed(2) + '</td>' +
+      '<td><a href="' + ((r.sourceUrls||[])[0]||'#') + '" target="_blank" class="muted">source</a></td>' +
+    '</tr>'
+  )).join('');
   document.getElementById('resultsCard').classList.remove('hidden');
 }
 
@@ -231,7 +285,7 @@ async function runSingle() {
   if (!q) return;
   const btn = document.getElementById('singleBtn');
   btn.disabled = true;
-  document.getElementById('statusLine').textContent = 'Searching public sources…';
+  document.getElementById('statusLine').textContent = 'Searching public sources...';
   try {
     const isDomain = q.includes('.') && !q.includes(' ');
     const base = isDomain ? { domain: q } : { company_name: q };
@@ -241,7 +295,7 @@ async function runSingle() {
     });
     const rows = flattenLeadsResponse(data.domain || q, data);
     document.getElementById('resultsSummary').textContent =
-      `${rows.length} lead(s) from ${data.domain || q} (${data.pages_crawled.length} pages crawled)`;
+      rows.length + ' lead(s) from ' + (data.domain || q) + ' (' + data.pages_crawled.length + ' pages crawled)';
     renderRows(rows);
     document.getElementById('statusLine').textContent = data.warnings.join(' ') || '';
     await refreshAccount();
@@ -257,12 +311,12 @@ async function runBulk() {
   if (!lines.length) return;
   const btn = document.getElementById('bulkBtn');
   btn.disabled = true;
-  document.getElementById('statusLine').textContent = `Processing ${lines.length} companies… this can take a minute.`;
+  document.getElementById('statusLine').textContent = 'Processing ' + lines.length + ' companies... this can take a minute.';
   try {
     const data = await api('/leads/bulk', { method: 'POST', body: JSON.stringify({ companies: lines }) });
     let rows = [];
     data.results.forEach(r => { rows = rows.concat(flattenLeadsResponse(r.domain || r.input, r)); });
-    document.getElementById('resultsSummary').textContent = `${rows.length} lead(s) across ${data.count} companies`;
+    document.getElementById('resultsSummary').textContent = rows.length + ' lead(s) across ' + data.count + ' companies';
     renderRows(rows);
     document.getElementById('statusLine').textContent = '';
     await refreshAccount();
@@ -278,7 +332,7 @@ function exportCSV() {
   const header = ['Company', 'Name', 'Title', 'Email', 'Confidence', 'Source'];
   const csv = [header.join(',')].concat(lastRows.map(r => [
     r.company, r.name || '', r.title || '', r.email || '', r.confidence ?? 0, (r.sourceUrls||[])[0] || ''
-  ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(','))).join('\n');
+  ].map(v => '"' + String(v).replace(/"/g,'""') + '"').join(','))).join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
