@@ -1,23 +1,5 @@
 """Dodo Payments billing integration (Checkout Sessions + webhooks), using
 the official `dodopayments` Python SDK.
-
-Verified against the SDK actually installed (dodopayments 0.x) — the client's
-real resource names/methods are `client.checkout_sessions.create(...)` and
-`client.webhooks.unwrap(...)`, not the more generic names you might guess
-from other providers' docs.
-
-Required env vars (get these from https://app.dodopayments.com — API Keys
-and Webhooks sections):
-
-  DODO_PAYMENTS_API_KEY       your secret/bearer API key
-  DODO_PAYMENTS_ENVIRONMENT   "test_mode" or "live_mode"
-  DODO_PAYMENTS_WEBHOOK_KEY   webhook signing secret, from the webhook you create
-  DODO_PRODUCT_ID              the product_id of your subscription product
-                                (create it once in the Dodo dashboard)
-  PUBLIC_BASE_URL              e.g. https://yourdomain.com (for the return_url)
-
-Until these are set, /billing/create-checkout-session returns a clear 501
-instead of crashing — the free tier works fully with zero billing config.
 """
 import os
 
@@ -32,11 +14,6 @@ DODO_WEBHOOK_KEY = os.environ.get("DODO_PAYMENTS_WEBHOOK_KEY", "")
 DODO_PRODUCT_ID = os.environ.get("DODO_PRODUCT_ID", "")
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://localhost:8000")
 
-# Event types that mean "this user should have paid-tier access right now".
-# subscription.on_hold is deliberately excluded from the downgrade set below —
-# per Dodo's docs it's a recoverable payment-retry state, not a hard failure,
-# so we leave the user on paid tier during the retry window rather than
-# yanking access on the first missed charge.
 GRANT_EVENTS = {"subscription.active", "subscription.renewed"}
 REVOKE_EVENTS = {"subscription.cancelled", "subscription.expired", "subscription.failed"}
 
@@ -46,7 +23,7 @@ def billing_configured() -> bool:
 
 
 def _get_client():
-    from dodopayments import DodoPayments  # imported lazily — only needed once billing is used
+    from dodopayments import DodoPayments
     return DodoPayments(
         bearer_token=DODO_API_KEY,
         webhook_key=DODO_WEBHOOK_KEY or None,
@@ -58,8 +35,7 @@ def create_checkout_session(db: Session, user: User) -> str:
     if not billing_configured():
         raise HTTPException(
             status_code=501,
-            detail="Billing isn't configured yet — set DODO_PAYMENTS_API_KEY and DODO_PRODUCT_ID "
-                   "to enable upgrades. The free tier works fully without this.",
+            detail="Billing isn't configured yet.",
         )
     client = _get_client()
 
@@ -78,15 +54,17 @@ def handle_webhook(db: Session, payload: bytes, headers: dict):
     client = _get_client()
     try:
         event = client.webhooks.unwrap(payload.decode("utf-8"), headers=headers)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid Dodo Payments webhook signature")
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid Dodo Payments webhook signature: {type(exc).__name__}: {exc} "
+                   f"(key_len={len(DODO_WEBHOOK_KEY)}, key_repr={DODO_WEBHOOK_KEY!r}, "
+                   f"hdr_keys={sorted(headers.keys())!r})",
+        )
 
     etype = getattr(event, "type", None)
     data = getattr(event, "data", None)
 
-    # Only subscription.* events carry the nested subscription/customer object we need.
-    # payment.* events are also delivered but we don't need to act on them separately —
-    # subscription.active / subscription.renewed already fire alongside a successful charge.
     if data is None or not hasattr(data, "customer"):
         return {"received": True, "type": etype}
 
