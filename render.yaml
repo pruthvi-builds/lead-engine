@@ -24,3 +24,13 @@ services:
         sync: false          # optional — only needed for the paid-tier LLM extraction pass
       - key: LLM_EXTRACTION_MODEL
         sync: false          # optional — set alongside ANTHROPIC_API_KEY
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lead-engine-db
+          property: connectionString
+
+databases:
+  - name: lead-engine-db
+    plan: free
+    databaseName: lead_engine
+    user: lead_engine

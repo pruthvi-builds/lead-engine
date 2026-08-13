@@ -10,5 +10,6 @@ sqlalchemy>=2.0
 bcrypt>=4.1
 dodopayments[webhooks]>=1.0
 standardwebhooks>=1.0
+psycopg2-binary>=2.9
 anthropic>=0.30
 python-multipart>=0.0.9
