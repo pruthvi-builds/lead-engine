@@ -1,0 +1,26 @@
+# Render.com deploy config — free tier, no CLI needed.
+# Push this repo to GitHub, then on render.com: New -> Blueprint -> connect the repo.
+# Render reads this file and sets up the service automatically. You'll only need to
+# fill in the secret env vars marked sync: false in the Render dashboard after deploy.
+services:
+  - type: web
+    name: lead-engine
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn webapp.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DODO_PAYMENTS_API_KEY
+        sync: false          # paste your API key value in the Render dashboard
+      - key: DODO_PAYMENTS_ENVIRONMENT
+        value: live_mode
+      - key: DODO_PAYMENTS_WEBHOOK_KEY
+        sync: false          # paste the webhook signing secret in the Render dashboard (see DODO_SETUP.md — don't commit secrets to git)
+      - key: DODO_PRODUCT_ID
+        value: pdt_0NIJRRuJRIHkNdiHym6Ok
+      - key: PUBLIC_BASE_URL
+        sync: false          # set this to your actual Render URL after first deploy, e.g. https://lead-engine.onrender.com
+      - key: ANTHROPIC_API_KEY
+        sync: false          # optional — only needed for the paid-tier LLM extraction pass
+      - key: LLM_EXTRACTION_MODEL
+        sync: false          # optional — set alongside ANTHROPIC_API_KEY

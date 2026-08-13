@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lead Engine</title>
+<style>
+  :root {
+    --bg: #0b0d12; --panel: #131722; --border: #232838; --text: #e8eaf0;
+    --muted: #8a90a3; --accent: #5b8def; --accent2: #4dd6a7; --danger: #e5636b;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 32px 20px 80px; }
+  header { display:flex; justify-content:space-between; align-items:center; margin-bottom: 28px; }
+  h1 { font-size: 20px; margin:0; letter-spacing: -0.02em; }
+  h1 span { color: var(--accent); }
+  .pill { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--panel); border:1px solid var(--border); color: var(--muted); }
+  .pill.paid { color: var(--accent2); border-color: var(--accent2); }
+  .card { background: var(--panel); border:1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+  label { display:block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  input, textarea { width:100%; background:#0e1117; border:1px solid var(--border); color:var(--text); border-radius:8px; padding:10px 12px; font-size:14px; margin-bottom:12px; font-family: inherit; }
+  textarea { min-height: 90px; resize: vertical; }
+  button { background: var(--accent); color:#fff; border:none; border-radius:8px; padding:10px 16px; font-size:14px; cursor:pointer; font-weight:600; }
+  button:hover { opacity:0.9; }
+  button.secondary { background: transparent; border:1px solid var(--border); color: var(--text); }
+  button:disabled { opacity:0.5; cursor:not-allowed; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  table { width:100%; border-collapse: collapse; margin-top: 16px; font-size: 13px; }
+  th, td { text-align:left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:0.04em; }
+  .conf { font-variant-numeric: tabular-nums; }
+  .conf-high { color: var(--accent2); }
+  .conf-mid { color: #e0b84d; }
+  .conf-low { color: var(--danger); }
+  .muted { color: var(--muted); font-size: 13px; }
+  .tabs { display:flex; gap: 8px; margin-bottom: 16px; }
+  .tab { padding: 8px 14px; border-radius: 8px; cursor:pointer; font-size:13px; color:var(--muted); }
+  .tab.active { background: var(--panel); color: var(--text); border:1px solid var(--border); }
+  .hidden { display:none; }
+  .err { color: var(--danger); font-size: 13px; margin-top: 8px; }
+  a { color: var(--accent); }
+  .footer-note { color: var(--muted); font-size: 12px; margin-top: 24px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Lead<span>Engine</span></h1>
+    <div id="acct" class="row"></div>
+  </header>
+
+  <!-- AUTH -->
+  <div id="authCard" class="card">
+    <div class="tabs">
+      <div class="tab active" data-tab="login">Log in</div>
+      <div class="tab" data-tab="signup">Sign up</div>
+    </div>
+    <div id="loginForm">
+      <label>Email</label>
+      <input id="loginEmail" type="email" placeholder="you@company.com">
+      <label>Password</label>
+      <input id="loginPassword" type="password" placeholder="••••••••">
+      <button onclick="doLogin()">Log in</button>
+      <div id="loginErr" class="err"></div>
+    </div>
+    <div id="signupForm" class="hidden">
+      <label>Email</label>
+      <input id="signupEmail" type="email" placeholder="you@company.com">
+      <label>Password (min 8 characters)</label>
+      <input id="signupPassword" type="password" placeholder="••••••••">
+      <button onclick="doSignup()">Create account</button>
+      <div id="signupErr" class="err"></div>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="appArea" class="hidden">
+    <div class="card">
+      <div class="tabs">
+        <div class="tab active" data-mode="single">Single lookup</div>
+        <div class="tab" data-mode="bulk">Bulk (paid)</div>
+      </div>
+
+      <div id="singleMode">
+        <label>Company name or domain</label>
+        <div class="row">
+          <input id="singleQuery" placeholder="e.g. Close.com or 'Close'" style="flex:1">
+          <button onclick="runSingle()" id="singleBtn">Find leads</button>
+        </div>
+      </div>
+
+      <div id="bulkMode" class="hidden">
+        <label>One company name or domain per line</label>
+        <textarea id="bulkQuery" placeholder="close.com&#10;basecamp.com&#10;Acme Inc"></textarea>
+        <button onclick="runBulk()" id="bulkBtn">Find leads for all</button>
+      </div>
+
+      <div id="statusLine" class="muted" style="margin-top:10px;"></div>
+    </div>
+
+    <div id="resultsCard" class="card hidden">
+      <div class="row" style="justify-content:space-between;">
+        <div id="resultsSummary" class="muted"></div>
+        <button class="secondary" onclick="exportCSV()">Export CSV</button>
+      </div>
+      <table id="resultsTable">
+        <thead><tr><th>Company</th><th>Name</th><th>Title</th><th>Email</th><th>Confidence</th><th>Source</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card" id="upgradeCard">
+      <div class="row" style="justify-content:space-between;">
+        <div>
+          <strong>Free tier:</strong> <span id="quotaText" class="muted"></span>
+        </div>
+        <button onclick="upgrade()">Upgrade for unlimited + bulk</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    Built on public company data only — no LinkedIn scraping, no purchased lists. Every lead includes its source URL.
+  </div>
+</div>
+
+<script>
+const API = "";
+let apiKey = null;
+let lastRows = [];
+
+function setTab(container, selector, attr) {
+  document.querySelectorAll(selector).forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll(selector).forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      container(t.dataset[attr]);
+    });
+  });
+}
+
+setTab((val) => {
+  document.getElementById('loginForm').classList.toggle('hidden', val !== 'login');
+  document.getElementById('signupForm').classList.toggle('hidden', val !== 'signup');
+}, '.tabs .tab[data-tab]', 'tab');
+
+setTab((val) => {
+  document.getElementById('singleMode').classList.toggle('hidden', val !== 'single');
+  document.getElementById('bulkMode').classList.toggle('hidden', val !== 'bulk');
+}, '#appArea .tab[data-mode]', 'mode');
+
+async function api(path, opts = {}) {
+  opts.headers = opts.headers || {};
+  opts.headers['Content-Type'] = 'application/json';
+  if (apiKey) opts.headers['Authorization'] = 'Bearer ' + apiKey;
+  const res = await fetch(API + path, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || res.statusText);
+  return data;
+}
+
+async function doSignup() {
+  const email = document.getElementById('signupEmail').value;
+  const password = document.getElementById('signupPassword').value;
+  document.getElementById('signupErr').textContent = '';
+  try {
+    const data = await api('/signup', { method: 'POST', body: JSON.stringify({ email, password }) });
+    onAuthed(data.api_key, data.email);
+  } catch (e) { document.getElementById('signupErr').textContent = e.message; }
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+  document.getElementById('loginErr').textContent = '';
+  try {
+    const data = await api('/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+    onAuthed(data.api_key, data.email);
+  } catch (e) { document.getElementById('loginErr').textContent = e.message; }
+}
+
+async function onAuthed(key, email) {
+  apiKey = key;
+  document.getElementById('authCard').classList.add('hidden');
+  document.getElementById('appArea').classList.remove('hidden');
+  await refreshAccount();
+}
+
+async function refreshAccount() {
+  const me = await api('/me');
+  const acct = document.getElementById('acct');
+  acct.innerHTML = `<span class="pill ${me.is_paid ? 'paid' : ''}">${me.email} · ${me.is_paid ? 'Paid' : 'Free'}</span>`;
+  document.getElementById('quotaText').textContent =
+    me.is_paid ? 'Unlimited lookups + bulk enabled.' :
+    `${me.usage_today} / ${me.free_daily_quota} lookups used today.`;
+  document.getElementById('upgradeCard').classList.toggle('hidden', me.is_paid);
+}
+
+function confClass(c) {
+  if (c >= 0.75) return 'conf-high';
+  if (c >= 0.4) return 'conf-mid';
+  return 'conf-low';
+}
+
+function renderRows(rows) {
+  lastRows = rows;
+  const tbody = document.querySelector('#resultsTable tbody');
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.company || ''}</td>
+      <td>${r.name || '<span class="muted">—</span>'}</td>
+      <td>${r.title || ''}</td>
+      <td>${r.email || '<span class="muted">none found</span>'}</td>
+      <td class="conf ${confClass(r.confidence)}">${(r.confidence ?? 0).toFixed(2)}</td>
+      <td><a href="${(r.sourceUrls||[])[0]||'#'}" target="_blank" class="muted">source</a></td>
+    </tr>
+  `).join('');
+  document.getElementById('resultsCard').classList.remove('hidden');
+}
+
+function flattenLeadsResponse(company, data) {
+  return (data.leads || []).map(l => ({
+    company, name: l.name, title: l.title, email: l.best_email,
+    confidence: l.confidence, sourceUrls: l.source_urls,
+  }));
+}
+
+async function runSingle() {
+  const q = document.getElementById('singleQuery').value.trim();
+  if (!q) return;
+  const btn = document.getElementById('singleBtn');
+  btn.disabled = true;
+  document.getElementById('statusLine').textContent = 'Searching public sources…';
+  try {
+    const isDomain = q.includes('.') && !q.includes(' ');
+    const base = isDomain ? { domain: q } : { company_name: q };
+    const data = await api('/leads', {
+      method: 'POST',
+      body: JSON.stringify({ ...base, attempt_smtp: false }),
+    });
+    const rows = flattenLeadsResponse(data.domain || q, data);
+    document.getElementById('resultsSummary').textContent =
+      `${rows.length} lead(s) from ${data.domain || q} (${data.pages_crawled.length} pages crawled)`;
+    renderRows(rows);
+    document.getElementById('statusLine').textContent = data.warnings.join(' ') || '';
+    await refreshAccount();
+  } catch (e) {
+    document.getElementById('statusLine').textContent = 'Error: ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function runBulk() {
+  const lines = document.getElementById('bulkQuery').value.split('\n').map(s => s.trim()).filter(Boolean);
+  if (!lines.length) return;
+  const btn = document.getElementById('bulkBtn');
+  btn.disabled = true;
+  document.getElementById('statusLine').textContent = `Processing ${lines.length} companies… this can take a minute.`;
+  try {
+    const data = await api('/leads/bulk', { method: 'POST', body: JSON.stringify({ companies: lines }) });
+    let rows = [];
+    data.results.forEach(r => { rows = rows.concat(flattenLeadsResponse(r.domain || r.input, r)); });
+    document.getElementById('resultsSummary').textContent = `${rows.length} lead(s) across ${data.count} companies`;
+    renderRows(rows);
+    document.getElementById('statusLine').textContent = '';
+    await refreshAccount();
+  } catch (e) {
+    document.getElementById('statusLine').textContent = 'Error: ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function exportCSV() {
+  if (!lastRows.length) return;
+  const header = ['Company', 'Name', 'Title', 'Email', 'Confidence', 'Source'];
+  const csv = [header.join(',')].concat(lastRows.map(r => [
+    r.company, r.name || '', r.title || '', r.email || '', r.confidence ?? 0, (r.sourceUrls||[])[0] || ''
+  ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(','))).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'leads.csv';
+  a.click();
+}
+
+async function upgrade() {
+  try {
+    const data = await api('/billing/create-checkout-session', { method: 'POST' });
+    window.location.href = data.checkout_url;
+  } catch (e) {
+    alert(e.message);
+  }
+}
+</script>
+</body>
+</html>
