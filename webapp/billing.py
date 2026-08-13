@@ -54,13 +54,8 @@ def handle_webhook(db: Session, payload: bytes, headers: dict):
     client = _get_client()
     try:
         event = client.webhooks.unwrap(payload.decode("utf-8"), headers=headers)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid Dodo Payments webhook signature: {type(exc).__name__}: {exc} "
-                   f"(key_len={len(DODO_WEBHOOK_KEY)}, key_repr={DODO_WEBHOOK_KEY!r}, "
-                   f"hdr_keys={sorted(headers.keys())!r})",
-        )
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid Dodo Payments webhook signature")
 
     etype = getattr(event, "type", None)
     data = getattr(event, "data", None)
