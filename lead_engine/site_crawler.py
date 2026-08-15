@@ -27,6 +27,15 @@ CANDIDATE_PATHS = [
 ]
 
 EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
+
+PHONE_RE = re.compile(r"(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}")
+
+
+def _clean_phone(raw):
+    digits = re.sub(r"[^\d+]", "", raw)
+    if len(re.sub(r"\D", "", digits)) < 7:
+        return ""
+    return digits
 # Each word: capital letter then LOWERCASE only (rules out "THE PLATFORM"-style nav/caps text)
 NAME_RE = re.compile(r"^[A-Z][a-z'\-]{1,20}(?:\s[A-Z][a-z'\-]{1,20}){1,2}$")
 
@@ -125,6 +134,7 @@ def crawl_company_pages(domain: str, max_pages: int = 6, use_llm: bool = False) 
     rp = _get_robot_parser(domain)
 
     emails_found = set()
+    phones_found = set()
     people = []
     pages_crawled = []
 
@@ -154,10 +164,20 @@ def crawl_company_pages(domain: str, max_pages: int = 6, use_llm: bool = False) 
                 addr = a["href"].split(":", 1)[1].split("?")[0].strip()
                 if EMAIL_RE.fullmatch(addr):
                     emails_found.add(addr.lower())
+            if a["href"].lower().startswith("tel:"):
+                raw = a["href"].split(":", 1)[1].split("?")[0].strip()
+                cleaned = _clean_phone(raw)
+                if cleaned:
+                    phones_found.add(cleaned)
 
         # 2. any plaintext emails on the page
         for m in EMAIL_RE.findall(soup.get_text(" ")):
             emails_found.add(m.lower())
+
+        for m in PHONE_RE.findall(soup.get_text(" ")):
+            cleaned = _clean_phone(m)
+            if cleaned:
+                phones_found.add(cleaned)
 
         # 3a. heuristic name+title extraction, scoped to team/leadership-looking sections
         #     (highest precision — the surrounding markup itself signals "this is a person")
@@ -191,4 +211,4 @@ def crawl_company_pages(domain: str, max_pages: int = 6, use_llm: bool = False) 
             seen.add(p.name)
             deduped_people.append(p)
 
-    return {"emails": emails_found, "people": deduped_people, "pages_crawled": pages_crawled}
+    return {"emails": emails_found, "phones": phones_found, "people": deduped_people, "pages_crawled": pages_crawled}

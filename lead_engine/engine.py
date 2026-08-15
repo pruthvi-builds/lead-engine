@@ -91,6 +91,7 @@ def generate_leads(company_name: str = "", domain: str = "", location_hint: str 
             person=person,
             emails=verified[:3],  # top 3 candidates, not just one guess
             source_urls=[person.source_url] if person.source_url else [],
+            phones=list(crawl.get("phones", [])),
         ))
 
     # Any directly-published emails with no name attached still count as a (lower-detail) lead
@@ -112,12 +113,14 @@ def generate_leads(company_name: str = "", domain: str = "", location_hint: str 
             person=None,
             emails=[candidate],
             source_urls=crawl["pages_crawled"],
+            phones=list(crawl.get("phones", [])),
         ))
 
     return {
         "domain": resolved_domain,
         "resolved_via": resolved_via,
         "pages_crawled": crawl["pages_crawled"],
+        "phones": sorted(crawl.get("phones", [])),
         "leads": leads,
         "warnings": warnings,
     }

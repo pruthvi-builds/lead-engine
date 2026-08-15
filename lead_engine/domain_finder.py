@@ -79,3 +79,42 @@ def normalize_domain(raw: str) -> str:
     if "://" not in raw:
         raw = "https://" + raw
     return _root_domain(raw)
+
+
+def find_companies_by_category(category: str, location: str = "", max_results: int = 8) -> list:
+    """Search for multiple companies in a given category/niche (+ optional location).
+
+    Returns a de-duplicated list of candidate root domains (best-effort, free web
+    search via DDGS), filtered against BLOCKLIST_DOMAINS. Order is roughly by
+    relevance/frequency in the search results.
+    """
+    if DDGS is None:
+        raise RuntimeError("duckduckgo_search is not installed")
+
+    category = (category or "").strip()
+    if not category:
+        return []
+
+    query = f"{category} {location} companies".strip() if location else f"{category} companies"
+    candidates = []
+    try:
+        with DDGS() as ddgs:
+            for r in ddgs.text(query, max_results=max_results * 4):
+                url = r.get("href") or r.get("url") or ""
+                if not url:
+                    continue
+                domain = _root_domain(url)
+                if not domain or domain in BLOCKLIST_DOMAINS:
+                    continue
+                candidates.append(domain)
+    except Exception:
+        return []
+
+    seen_order = []
+    counts = {}
+    for d in candidates:
+        counts[d] = counts.get(d, 0) + 1
+        if d not in seen_order:
+            seen_order.append(d)
+    seen_order.sort(key=lambda d: (-counts[d], candidates.index(d)))
+    return seen_order[:max_results]

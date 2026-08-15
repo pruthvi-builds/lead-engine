@@ -33,3 +33,4 @@ class Lead:
     person: Optional[Person]
     emails: list  # list[EmailCandidate], best first
     source_urls: list = field(default_factory=list)
+    phones: list = field(default_factory=list)  # cleaned phone number strings

@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from .db import init_db, get_db, User
 from . import auth, billing, email_utils
 from lead_engine.engine import generate_leads
+from lead_engine.domain_finder import find_companies_by_category
 
 app = FastAPI(title="Lead Engine", version="0.2")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -124,6 +125,7 @@ def _serialize_leads(result: dict) -> dict:
         "resolved_via": result["resolved_via"],
         "pages_crawled": result["pages_crawled"],
         "warnings": result["warnings"],
+        "company_phones": result.get("phones", []),
         "leads": [
             {
                 "name": lead.person.name if lead.person else None,
@@ -132,6 +134,7 @@ def _serialize_leads(result: dict) -> dict:
                 "confidence": round(lead.emails[0].confidence, 2) if lead.emails else 0,
                 "alt_emails": [e.email for e in lead.emails[1:]],
                 "source_urls": lead.source_urls,
+                "phones": lead.phones,
                 "notes": lead.emails[0].notes if lead.emails else [],
             }
             for lead in result["leads"]
@@ -188,6 +191,46 @@ def leads_bulk_endpoint(req: BulkLeadRequest, user: User = Depends(current_user)
 
 
 # --------------------------------------------------------------------------
+class CategoryLeadRequest(BaseModel):
+    category: str  # e.g. "dental clinics", "SaaS marketing agencies"
+    location: str = ""
+    max_companies: int = 8
+    attempt_smtp: bool = False
+
+
+@app.post("/leads/by-category")
+def leads_by_category_endpoint(req: CategoryLeadRequest, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    if not user.is_paid:
+        raise HTTPException(status_code=402, detail="Category/niche search is a paid-tier feature. Upgrade to use it.")
+    category = req.category.strip()
+    if not category:
+        raise HTTPException(status_code=400, detail="Provide a category or niche")
+    max_companies = max(1, min(req.max_companies, auth.PAID_BULK_MAX_PER_REQUEST))
+
+    try:
+        domains = find_companies_by_category(category, location=req.location, max_results=max_companies)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Company search failed: {e}")
+
+    if not domains:
+        return {"category": category, "location": req.location, "count": 0, "results": []}
+
+    results = []
+    for domain in domains:
+        try:
+            result = generate_leads(
+                domain=domain,
+                company_name="",
+                attempt_smtp=req.attempt_smtp,
+                use_llm=user.is_paid,
+            )
+            results.append({"input": domain, **_serialize_leads(result)})
+        except Exception as e:
+            results.append({"input": domain, "error": str(e), "leads": []})
+
+    return {"category": category, "location": req.location, "count": len(results), "results": results}
+
+
 # Billing
 # --------------------------------------------------------------------------
 @app.post("/billing/create-checkout-session")

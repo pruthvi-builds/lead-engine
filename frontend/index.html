@@ -148,6 +148,7 @@
       <div class="tabs">
         <div class="tab active" data-mode="single">Single lookup</div>
         <div class="tab" data-mode="bulk">Bulk (paid)</div>
+          <div class="tab" data-mode="category">Category/niche (paid)</div>
       </div>
 
       <div id="singleMode">
@@ -164,7 +165,16 @@
         <button onclick="runBulk()" id="bulkBtn">Find leads for all</button>
       </div>
 
-      <div id="statusLine" class="muted" style="margin-top:10px;"></div>
+      <div id="categoryMode" class="hidden">
+          <label>Category or niche (e.g. "dental clinics", "SaaS marketing agencies")</label>
+          <div class="row">
+            <input id="categoryQuery" placeholder="e.g. plumbers" style="flex:1">
+            <input id="categoryLocation" placeholder="Location (optional)" style="flex:1">
+            <button onclick="runCategory()" id="categoryBtn">Find companies + contacts</button>
+          </div>
+        </div>
+
+        <div id="statusLine" class="muted" style="margin-top:10px;"></div>
     </div>
 
     <div id="resultsCard" class="card hidden">
@@ -173,7 +183,7 @@
         <button class="secondary" onclick="exportCSV()">Export CSV</button>
       </div>
       <table id="resultsTable">
-        <thead><tr><th>Company</th><th>Name</th><th>Title</th><th>Email</th><th>Confidence</th><th>Source</th></tr></thead>
+        <thead><tr><th>Company</th><th>Name</th><th>Title</th><th>Email</th><th>Phone</th><th>Confidence</th><th>Source</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -216,6 +226,7 @@ setTab((val) => {
 setTab((val) => {
   document.getElementById('singleMode').classList.toggle('hidden', val !== 'single');
   document.getElementById('bulkMode').classList.toggle('hidden', val !== 'bulk');
+  document.getElementById('categoryMode').classList.toggle('hidden', val !== 'category');
 }, '#appArea .tab[data-mode]', 'mode');
 
 async function api(path, opts = {}) {
@@ -400,6 +411,7 @@ function renderRows(rows) {
       '<td>' + (r.name || '<span class="muted">none</span>') + '</td>' +
       '<td>' + (r.title || '') + '</td>' +
       '<td>' + (r.email || '<span class="muted">none found</span>') + '</td>' +
+      '<td>' + (r.phone || '<span class="muted">none</span>') + '</td>' +
       '<td class="conf ' + confClass(r.confidence) + '">' + (r.confidence ?? 0).toFixed(2) + '</td>' +
       '<td><a href="' + ((r.sourceUrls||[])[0]||'#') + '" target="_blank" class="muted">source</a></td>' +
     '</tr>'
@@ -410,6 +422,7 @@ function renderRows(rows) {
 function flattenLeadsResponse(company, data) {
   return (data.leads || []).map(l => ({
     company, name: l.name, title: l.title, email: l.best_email,
+    phone: (l.phones && l.phones.length ? l.phones.join(', ') : ''),
     confidence: l.confidence, sourceUrls: l.source_urls,
   }));
 }
@@ -461,11 +474,37 @@ async function runBulk() {
   }
 }
 
+async function runCategory() {
+  const category = document.getElementById('categoryQuery').value.trim();
+  const location = document.getElementById('categoryLocation').value.trim();
+  if (!category) return;
+  const btn = document.getElementById('categoryBtn');
+  btn.disabled = true;
+  document.getElementById('statusLine').textContent = 'Searching for companies in "' + category + '"...';
+  try {
+    const data = await api('/leads/by-category', {
+      method: 'POST',
+      body: JSON.stringify({ category, location, max_companies: 8 }),
+    });
+    let rows = [];
+    (data.results || []).forEach(r => { rows = rows.concat(flattenLeadsResponse(r.domain || r.input, r)); });
+    document.getElementById('resultsSummary').textContent =
+      rows.length + ' lead(s) across ' + data.count + ' compan' + (data.count === 1 ? 'y' : 'ies') + ' matching "' + category + '"';
+    renderRows(rows);
+    document.getElementById('statusLine').textContent = '';
+    await refreshAccount();
+  } catch (e) {
+    document.getElementById('statusLine').textContent = 'Error: ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 function exportCSV() {
   if (!lastRows.length) return;
-  const header = ['Company', 'Name', 'Title', 'Email', 'Confidence', 'Source'];
+  const header = ['Company', 'Name', 'Title', 'Email', 'Phone', 'Confidence', 'Source'];
   const csv = [header.join(',')].concat(lastRows.map(r => [
-    r.company, r.name || '', r.title || '', r.email || '', r.confidence ?? 0, (r.sourceUrls||[])[0] || ''
+    r.company, r.name || '', r.title || '', r.email || '', r.phone || '', r.confidence ?? 0, (r.sourceUrls||[])[0] || ''
   ].map(v => '"' + String(v).replace(/"/g,'""') + '"').join(','))).join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const a = document.createElement('a');
