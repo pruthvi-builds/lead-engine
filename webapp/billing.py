@@ -43,6 +43,7 @@ def create_checkout_session(db: Session, user: User) -> str:
         product_cart=[{"product_id": DODO_PRODUCT_ID, "quantity": 1}],
         customer={"email": user.email, "name": user.email},
         return_url=f"{PUBLIC_BASE_URL}/?upgraded=1",
+        cancel_url=f"{PUBLIC_BASE_URL}/?upgrade_cancelled=1",
     )
     return session.checkout_url
 
