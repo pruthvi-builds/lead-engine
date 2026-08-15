@@ -28,6 +28,10 @@ services:
         fromDatabase:
           name: lead-engine-db
           property: connectionString
+      - key: RESEND_API_KEY
+        sync: false        # optional - get a free key at resend.com to enable password-reset emails
+      - key: FROM_EMAIL
+        value: Lead Engine <onboarding@resend.dev>
 
 databases:
   - name: lead-engine-db

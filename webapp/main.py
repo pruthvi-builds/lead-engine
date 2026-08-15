@@ -16,7 +16,7 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
 from .db import init_db, get_db, User
-from . import auth, billing
+from . import auth, billing, email_utils
 from lead_engine.engine import generate_leads
 
 app = FastAPI(title="Lead Engine", version="0.2")
@@ -45,6 +45,15 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str
+
+
 @app.post("/signup")
 def signup(req: SignupRequest, db: Session = Depends(get_db)):
     if len(req.password) < 8:
@@ -60,6 +69,33 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     return {"email": user.email, "api_key": api_key}
 
 
+@app.post("/forgot-password")
+def forgot_password(req: ForgotPasswordRequest, request: Request, db: Session = Depends(get_db)):
+    # Always return the same generic response whether or not the email
+    # exists - otherwise this endpoint becomes a way to enumerate signups.
+    user = auth.get_user_by_email(db, req.email)
+    if user:
+        token = auth.create_password_reset(db, user)
+        base = str(request.base_url).rstrip("/")
+        reset_link = f"{base}/?reset={token}"
+        email_utils.send_email(
+            user.email,
+            "Reset your Lead Engine password",
+            "<p>Click the link below to set a new password. It expires in "
+            f"{auth.RESET_TOKEN_TTL_MINUTES} minutes.</p>"
+            f'<p><a href="{reset_link}">{reset_link}</a></p>'
+            "<p>Didn't request this? You can safely ignore this email.</p>",
+        )
+    return {"ok": True, "message": "If that email has an account, we've sent a reset link."}
+
+
+@app.post("/reset-password")
+def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
+    user = auth.consume_password_reset(db, req.token, req.password)
+    api_key = auth.get_active_api_key(db, user)
+    return {"email": user.email, "api_key": api_key}
+
+
 @app.get("/me")
 def me(user: User = Depends(current_user), db: Session = Depends(get_db)):
     return {
@@ -68,6 +104,7 @@ def me(user: User = Depends(current_user), db: Session = Depends(get_db)):
         "usage_today": auth.usage_today(db, user),
         "free_daily_quota": auth.FREE_DAILY_QUOTA,
         "billing_configured": billing.billing_configured(),
+        "email_configured": email_utils.email_configured(),
     }
 
 

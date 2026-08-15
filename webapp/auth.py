@@ -4,13 +4,13 @@ model for a product whose primary consumer is "hit our API", and the same
 key works for both the web frontend and any script/integration a paying
 customer wires up later.
 """
-from datetime import date
+from datetime import date, datetime, timedelta
 
 import bcrypt
 from fastapi import Header, HTTPException
 from sqlalchemy.orm import Session
 
-from .db import User, ApiKey, UsageEvent, new_api_key
+from .db import User, ApiKey, UsageEvent, PasswordResetToken, new_api_key, new_reset_token
 
 FREE_DAILY_QUOTA = 5
 FREE_BULK_MAX = 0          # bulk lookups are a paid-only feature
@@ -96,3 +96,36 @@ def usage_today(db: Session, user: User) -> int:
     today = date.today()
     row = db.query(UsageEvent).filter(UsageEvent.user_id == user.id, UsageEvent.day == today).first()
     return row.count if row else 0
+
+
+RESET_TOKEN_TTL_MINUTES = 30
+
+
+def get_user_by_email(db: Session, email: str) -> User | None:
+    return db.query(User).filter(User.email == email.strip().lower()).first()
+
+
+def create_password_reset(db: Session, user: User) -> str:
+    token = new_reset_token()
+    expires = datetime.utcnow() + timedelta(minutes=RESET_TOKEN_TTL_MINUTES)
+    db.add(PasswordResetToken(user_id=user.id, token=token, expires_at=expires))
+    db.commit()
+    return token
+
+
+def consume_password_reset(db: Session, token: str, new_password: str) -> User:
+    if len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    row = (
+        db.query(PasswordResetToken)
+        .filter(PasswordResetToken.token == token, PasswordResetToken.used.is_(False))
+        .first()
+    )
+    if not row or row.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="This reset link is invalid or has expired. Request a new one.")
+    user = db.query(User).filter(User.id == row.user_id).first()
+    user.password_hash = hash_password(new_password)
+    row.used = True
+    db.commit()
+    db.refresh(user)
+    return user

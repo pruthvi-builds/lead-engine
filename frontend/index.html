@@ -125,6 +125,21 @@
       <input id="signupPassword" type="password" placeholder="********">
       <button onclick="doSignup()" id="signupBtn">Create free account</button>
       <div id="signupErr" class="err"></div>
+      <p style="margin-top:10px;font-size:13px;"><a href="#" onclick="showForgot();return false;">Forgot password?</a></p>
+    </div>
+    <div id="forgotForm" class="hidden">
+      <label>Email</label>
+      <input id="forgotEmail" type="email" placeholder="you@company.com">
+      <button onclick="doForgotPassword()" id="forgotBtn">Send reset link</button>
+      <div id="forgotErr" class="err"></div>
+      <div id="forgotMsg" class="muted" style="font-size:13px;margin-top:8px;"></div>
+      <p style="margin-top:10px;font-size:13px;"><a href="#" onclick="showLogin();return false;">Back to log in</a></p>
+    </div>
+    <div id="resetForm" class="hidden">
+      <label>New password (min 8 characters)</label>
+      <input id="resetPassword" type="password" placeholder="********">
+      <button onclick="doResetPassword()" id="resetBtn">Set new password</button>
+      <div id="resetErr" class="err"></div>
     </div>
   </div>
 
@@ -253,6 +268,7 @@ async function doLogin() {
 
 async function onAuthed(key, email) {
   apiKey = key;
+  localStorage.setItem('le_api_key', key);
   document.getElementById('landing').classList.add('hidden');
   document.getElementById('authCard').classList.add('hidden');
   document.getElementById('appArea').classList.remove('hidden');
@@ -262,11 +278,110 @@ async function onAuthed(key, email) {
 async function refreshAccount() {
   const me = await api('/me');
   const acct = document.getElementById('acct');
-  acct.innerHTML = '<span class="pill ' + (me.is_paid ? 'paid' : '') + '">' + me.email + ' | ' + (me.is_paid ? 'Paid' : 'Free') + '</span>';
+  acct.innerHTML = '<span class="pill ' + (me.is_paid ? 'paid' : '') + '">' + me.email + ' | ' + (me.is_paid ? 'Paid' : 'Free') + '</span> <button onclick="logout()" style="margin-left:8px;">Log out</button>';
   document.getElementById('quotaText').textContent =
     me.is_paid ? 'Unlimited lookups + bulk enabled.' :
     (me.usage_today + ' / ' + me.free_daily_quota + ' lookups used today.');
   document.getElementById('upgradeCard').classList.toggle('hidden', me.is_paid);
+}
+
+function logout() {
+  apiKey = null;
+  localStorage.removeItem('le_api_key');
+  document.getElementById('appArea').classList.add('hidden');
+  document.getElementById('authCard').classList.remove('hidden');
+  document.getElementById('landing').classList.remove('hidden');
+  document.getElementById('loginForm').classList.remove('hidden');
+  document.getElementById('signupForm').classList.add('hidden');
+  document.getElementById('forgotForm').classList.add('hidden');
+  document.getElementById('resetForm').classList.add('hidden');
+  document.querySelectorAll('.tabs .tab[data-tab]').forEach(t => t.classList.remove('active'));
+  document.querySelector('.tabs .tab[data-tab="login"]').classList.add('active');
+}
+
+function showForgot() {
+  document.getElementById('loginForm').classList.add('hidden');
+  document.getElementById('signupForm').classList.add('hidden');
+  document.getElementById('forgotForm').classList.remove('hidden');
+  document.getElementById('resetForm').classList.add('hidden');
+}
+
+function showLogin() {
+  document.getElementById('forgotForm').classList.add('hidden');
+  document.getElementById('resetForm').classList.add('hidden');
+  document.getElementById('signupForm').classList.add('hidden');
+  document.getElementById('loginForm').classList.remove('hidden');
+  document.querySelectorAll('.tabs .tab[data-tab]').forEach(t => t.classList.remove('active'));
+  document.querySelector('.tabs .tab[data-tab="login"]').classList.add('active');
+}
+
+async function doForgotPassword() {
+  const email = document.getElementById('forgotEmail').value;
+  document.getElementById('forgotErr').textContent = '';
+  document.getElementById('forgotMsg').textContent = '';
+  const btn = document.getElementById('forgotBtn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  try {
+    const data = await api('/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
+    document.getElementById('forgotMsg').textContent = data.message;
+  } catch (e) {
+    document.getElementById('forgotErr').textContent = e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+let resetToken = null;
+
+function checkForResetToken() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('reset');
+  if (token) {
+    resetToken = token;
+    document.getElementById('landing').classList.add('hidden');
+    document.getElementById('authCard').classList.remove('hidden');
+    document.getElementById('loginForm').classList.add('hidden');
+    document.getElementById('signupForm').classList.add('hidden');
+    document.getElementById('forgotForm').classList.add('hidden');
+    document.getElementById('resetForm').classList.remove('hidden');
+    history.replaceState({}, document.title, window.location.pathname);
+  }
+}
+
+async function doResetPassword() {
+  const password = document.getElementById('resetPassword').value;
+  document.getElementById('resetErr').textContent = '';
+  const btn = document.getElementById('resetBtn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  try {
+    const data = await api('/reset-password', { method: 'POST', body: JSON.stringify({ token: resetToken, password }) });
+    await onAuthed(data.api_key, data.email);
+  } catch (e) {
+    document.getElementById('resetErr').textContent = e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+async function restoreSession() {
+  const saved = localStorage.getItem('le_api_key');
+  if (!saved) return;
+  apiKey = saved;
+  try {
+    await refreshAccount();
+    document.getElementById('landing').classList.add('hidden');
+    document.getElementById('authCard').classList.add('hidden');
+    document.getElementById('appArea').classList.remove('hidden');
+  } catch (e) {
+    apiKey = null;
+    localStorage.removeItem('le_api_key');
+  }
 }
 
 function confClass(c) {
@@ -366,6 +481,8 @@ async function upgrade() {
     alert(e.message);
   }
 }
+checkForResetToken();
+restoreSession();
 </script>
 </body>
 </html>

@@ -61,6 +61,21 @@ class UsageEvent(Base):
     __table_args__ = (UniqueConstraint("user_id", "day", name="uq_user_day"),)
 
 
+class PasswordResetToken(Base):
+    """A one-time, time-limited token emailed to a user who forgot their
+    password. Bearer-key auth means there's no session to reset, so this
+    is the only stateful piece a password-reset flow needs."""
+    __tablename__ = "password_reset_tokens"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    token = Column(String, unique=True, index=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Boolean, default=False, nullable=False)
+
+    user = relationship("User")
+
+
 def init_db():
     Base.metadata.create_all(bind=engine)
 
@@ -75,3 +90,7 @@ def get_db():
 
 def new_api_key() -> str:
     return "le_" + secrets.token_urlsafe(32)
+
+
+def new_reset_token() -> str:
+    return secrets.token_urlsafe(32)
