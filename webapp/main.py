@@ -206,7 +206,14 @@ def leads_by_category_endpoint(req: CategoryLeadRequest, user: User = Depends(cu
     if user.is_paid:
         max_companies = max(1, min(req.max_companies, auth.PAID_BULK_MAX_PER_REQUEST))
     else:
-        max_companies = max(1, min(req.max_companies, auth.FREE_CATEGORY_MAX))
+        used = auth.usage_today(db, user)
+        remaining = auth.FREE_DAILY_QUOTA - used
+        if remaining <= 0:
+            raise HTTPException(
+                status_code=402,
+                detail=f"Free tier limit of {auth.FREE_DAILY_QUOTA} lookups/day reached. Upgrade for unlimited.",
+            )
+        max_companies = max(1, min(req.max_companies, auth.FREE_CATEGORY_MAX, remaining))
     auth.check_and_increment_quota(db, user, cost=max_companies)
 
     try:
