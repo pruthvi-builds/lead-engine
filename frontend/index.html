@@ -288,6 +288,7 @@ async function refreshAccount() {
 function logout() {
   apiKey = null;
   localStorage.removeItem('le_api_key');
+  document.getElementById('acct').innerHTML = '';
   document.getElementById('appArea').classList.add('hidden');
   document.getElementById('authCard').classList.remove('hidden');
   document.getElementById('landing').classList.remove('hidden');
