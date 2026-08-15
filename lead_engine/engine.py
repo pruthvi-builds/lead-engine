@@ -100,11 +100,11 @@ def generate_leads(company_name: str = "", domain: str = "", location_hint: str 
     }
     for email in unattributed:
         local = email.split("@")[0]
-        if local in {"info", "contact", "hello", "support", "admin", "sales", "office"}:
-            continue  # generic mailbox, not a person-level lead
+        is_generic = local in {"info", "contact", "hello", "support", "admin", "sales", "office"}
         candidate = EmailCandidate(
-            email=email, pattern="published", source="found_on_page", confidence=0.9,
-            notes=["directly published on company site"],
+            email=email, pattern="published", source="found_on_page",
+            confidence=0.6 if is_generic else 0.9,
+            notes=["generic mailbox on company site" if is_generic else "directly published on company site"],
         )
         candidate = verify_candidate(candidate, mx_cache, attempt_smtp=attempt_smtp)
         leads.append(Lead(

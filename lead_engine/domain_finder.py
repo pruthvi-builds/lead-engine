@@ -23,6 +23,16 @@ BLOCKLIST_DOMAINS = {
     "youtube.com", "wikipedia.org", "crunchbase.com", "glassdoor.com",
     "indeed.com", "yelp.com", "bloomberg.com", "github.com", "medium.com",
     "reddit.com", "pinterest.com", "tiktok.com", "amazon.com",
+    # review/listing/directory aggregators that show up in category searches
+    # but are never themselves the company being searched for
+    "goodfirms.co", "clutch.co", "g2.com", "capterra.com", "trustpilot.com",
+    "sitejabber.com", "softwaresuggest.com", "thetoptens.com", "mouthshut.com",
+    "justdial.com", "sulekha.com", "indiamart.com", "tradeindia.com",
+    "99acres.com", "magicbricks.com", "housing.com", "squareyards.com",
+    "urbanpro.com", "quora.com", "yellowpages.com", "siliconindia.com",
+    "trustindex.io", "expertise.com", "thumbtack.com", "angi.com",
+    "ambitionbox.com", "glassdoor.co.in", "naukri.com", "shine.com",
+    "timesjobs.com", "monster.com", "foundit.in",
 }
 
 
