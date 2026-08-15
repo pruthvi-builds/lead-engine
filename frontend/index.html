@@ -115,7 +115,7 @@
       <input id="loginEmail" type="email" placeholder="you@company.com">
       <label>Password</label>
       <input id="loginPassword" type="password" placeholder="********">
-      <button onclick="doLogin()">Log in</button>
+      <button onclick="doLogin()" id="loginBtn">Log in</button>
       <div id="loginErr" class="err"></div>
     </div>
     <div id="signupForm">
@@ -123,7 +123,7 @@
       <input id="signupEmail" type="email" placeholder="you@company.com">
       <label>Password (min 8 characters)</label>
       <input id="signupPassword" type="password" placeholder="********">
-      <button onclick="doSignup()">Create free account</button>
+      <button onclick="doSignup()" id="signupBtn">Create free account</button>
       <div id="signupErr" class="err"></div>
     </div>
   </div>
@@ -217,20 +217,38 @@ async function doSignup() {
   const email = document.getElementById('signupEmail').value;
   const password = document.getElementById('signupPassword').value;
   document.getElementById('signupErr').textContent = '';
+  const btn = document.getElementById('signupBtn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Creating account...';
   try {
     const data = await api('/signup', { method: 'POST', body: JSON.stringify({ email, password }) });
     onAuthed(data.api_key, data.email);
-  } catch (e) { document.getElementById('signupErr').textContent = e.message; }
+  } catch (e) {
+    document.getElementById('signupErr').textContent = e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
 }
 
 async function doLogin() {
   const email = document.getElementById('loginEmail').value;
   const password = document.getElementById('loginPassword').value;
   document.getElementById('loginErr').textContent = '';
+  const btn = document.getElementById('loginBtn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Logging in...';
   try {
     const data = await api('/login', { method: 'POST', body: JSON.stringify({ email, password }) });
     onAuthed(data.api_key, data.email);
-  } catch (e) { document.getElementById('loginErr').textContent = e.message; }
+  } catch (e) {
+    document.getElementById('loginErr').textContent = e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
 }
 
 async function onAuthed(key, email) {
