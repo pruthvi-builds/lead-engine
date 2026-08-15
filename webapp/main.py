@@ -200,12 +200,14 @@ class CategoryLeadRequest(BaseModel):
 
 @app.post("/leads/by-category")
 def leads_by_category_endpoint(req: CategoryLeadRequest, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    if not user.is_paid:
-        raise HTTPException(status_code=402, detail="Category/niche search is a paid-tier feature. Upgrade to use it.")
     category = req.category.strip()
     if not category:
         raise HTTPException(status_code=400, detail="Provide a category or niche")
-    max_companies = max(1, min(req.max_companies, auth.PAID_BULK_MAX_PER_REQUEST))
+    if user.is_paid:
+        max_companies = max(1, min(req.max_companies, auth.PAID_BULK_MAX_PER_REQUEST))
+    else:
+        max_companies = max(1, min(req.max_companies, auth.FREE_CATEGORY_MAX))
+    auth.check_and_increment_quota(db, user, cost=max_companies)
 
     try:
         domains = find_companies_by_category(category, location=req.location, max_results=max_companies)

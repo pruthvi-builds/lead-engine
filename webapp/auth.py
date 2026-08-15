@@ -15,6 +15,7 @@ from .db import User, ApiKey, UsageEvent, PasswordResetToken, new_api_key, new_r
 FREE_DAILY_QUOTA = 5
 FREE_BULK_MAX = 0          # bulk lookups are a paid-only feature
 PAID_BULK_MAX_PER_REQUEST = 50  # sanity cap even for paid, so one request can't hang forever
+FREE_CATEGORY_MAX = 3    # free tier gets a taste of category/niche search, capped small
 
 
 def hash_password(password: str) -> str:
