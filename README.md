@@ -1,3 +1,8 @@
+**Live demo:** not yet deployed — runs locally (see below)
+**Tech stack:** Python, FastAPI, SQLAlchemy, bcrypt auth, Dodo Payments (billing + signed webhooks), Claude API (LLM extraction), Postgres/SQLite
+
+Full-stack lead-generation SaaS: give it a company name, get back named contacts with verified/scored email addresses, built entirely on public data. Includes auth, a DB-backed freemium quota, subscription billing with cryptographically-verified webhook events, and an optional LLM extraction pass.
+
 # Lead Engine — full-stack public-data lead generation SaaS
 
 Give it a company name or domain, get back named contacts with verified/scored
