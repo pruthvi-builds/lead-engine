@@ -95,7 +95,7 @@ def generate_leads(company_name: str = "", domain: str = "", location_hint: str 
         ))
 
     # Any directly-published emails with no name attached still count as a (lower-detail) lead
-    unattributed = published_emails - {
+    unattributed = set(published_emails) - {
         e.email for lead in leads for e in lead.emails if e.source == "found_on_page"
     }
     for email in unattributed:
@@ -112,7 +112,9 @@ def generate_leads(company_name: str = "", domain: str = "", location_hint: str 
             domain=resolved_domain,
             person=None,
             emails=[candidate],
-            source_urls=crawl["pages_crawled"],
+            # The specific page this email was actually found on, not every page crawled —
+            # the whole point of a source URL is letting the user check it before sending.
+            source_urls=[published_emails[email]],
             phones=list(crawl.get("phones", [])),
         ))
 

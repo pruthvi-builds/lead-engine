@@ -167,8 +167,9 @@ the free tier works fully with zero billing config.
 
 ## Freemium (live-tested)
 
-- 5 free lookups/day per account, enforced by a DB-backed daily usage ledger
-  — verified against the running API: 5 calls succeed, the 6th returns `402`.
+- 15 free lookups/day per account (`FREE_DAILY_QUOTA` in `webapp/auth.py`),
+  enforced by a DB-backed daily usage ledger — verified against the live
+  deployment: 15 calls succeed, the 16th returns `402`.
 - Bulk lookup (`/leads/bulk`) and the LLM extraction pass are both gated to
   paid accounts — verified: flipping `user.is_paid = True` (exactly what the
   Dodo webhook does on a real payment, tested above) immediately unlocks bulk

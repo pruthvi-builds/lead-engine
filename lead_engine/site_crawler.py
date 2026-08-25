@@ -122,7 +122,8 @@ def _allowed(rp: robotparser.RobotFileParser, url: str) -> bool:
 
 
 def crawl_company_pages(domain: str, max_pages: int = 6, use_llm: bool = False) -> dict:
-    """Returns {"emails": set[str], "people": list[Person], "pages_crawled": list[str]}.
+    """Returns {"emails": dict[str, str] (email -> first page URL found on),
+    "people": list[Person], "pages_crawled": list[str]}.
 
     use_llm=True additionally runs each crawled page through the LLM extractor
     (lead_engine.llm_extractor) — catches names/titles the regex heuristic
@@ -133,7 +134,7 @@ def crawl_company_pages(domain: str, max_pages: int = 6, use_llm: bool = False) 
     base = f"https://{domain}"
     rp = _get_robot_parser(domain)
 
-    emails_found = set()
+    emails_found = {}  # email -> first page URL it was found on, for accurate lead sourcing
     phones_found = set()
     people = []
     pages_crawled = []
@@ -163,7 +164,7 @@ def crawl_company_pages(domain: str, max_pages: int = 6, use_llm: bool = False) 
             if a["href"].lower().startswith("mailto:"):
                 addr = a["href"].split(":", 1)[1].split("?")[0].strip()
                 if EMAIL_RE.fullmatch(addr):
-                    emails_found.add(addr.lower())
+                    emails_found.setdefault(addr.lower(), url)
             if a["href"].lower().startswith("tel:"):
                 raw = a["href"].split(":", 1)[1].split("?")[0].strip()
                 cleaned = _clean_phone(raw)
@@ -172,7 +173,7 @@ def crawl_company_pages(domain: str, max_pages: int = 6, use_llm: bool = False) 
 
         # 2. any plaintext emails on the page
         for m in EMAIL_RE.findall(soup.get_text(" ")):
-            emails_found.add(m.lower())
+            emails_found.setdefault(m.lower(), url)
 
         for m in PHONE_RE.findall(soup.get_text(" ")):
             cleaned = _clean_phone(m)
