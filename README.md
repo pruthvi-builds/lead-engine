@@ -5,6 +5,8 @@ Full-stack lead-generation SaaS: give it a company name, get back named contacts
 
 # Lead Engine — full-stack public-data lead generation SaaS
 
+[![CI](https://github.com/pruthvi-builds/lead-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/pruthvi-builds/lead-engine/actions/workflows/ci.yml)
+
 Give it a company name or domain, get back named contacts with verified/scored
 email addresses. Built entirely on public data — no LinkedIn scraping, no
 purchased lists — so there's no ToS or data-privacy landmine sitting under it.
